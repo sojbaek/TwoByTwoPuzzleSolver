@@ -1,0 +1,774 @@
+---
+title: "CubeDrawing.Rmd"
+output: html_document
+date: '2022-09-23'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("C:/Users/sojba/Source/Repos/TwoByTwoPuzzleSolver/TwoByTwoPuzzleSolver")
+```
+```{r}
+source('transformation.R')
+cube = strsplit("uuuurrrrffffddddllllbbbb","")[[1]];
+drawCube(cube)
+
+ ucube = rotate(cube,"U"); drawCube(ucube);
+```
+```{r}
+ucube = rotate(cube,"U"); drawCube(ucube,label="U");
+dcube = rotate(cube,"D"); drawCube(dcube,label="D");
+fcube = rotate(cube,"F"); drawCube(fcube,label="F");
+bcube = rotate(cube,"B"); drawCube(bcube,label="B");
+rcube = rotate(cube,"R"); drawCube(rcube,label="R");
+lcube = rotate(cube,"L"); drawCube(lcube,label="L");
+```
+
+```{r}
+dcube = rotate(rotate(cube,"D"),"U'");
+drawCube(dcube)
+u3cube = rotate(rotate(cube,"U'"),"D");
+drawCube(u3cube)
+```
+
+```{r}
+dcube = rotate(rotate(cube,"L"),"R'");
+drawCube(dcube,label="R'L")
+u3cube = rotate(rotate(cube,"R'"),"L");
+drawCube(u3cube,label="LR'")
+```
+```{r}
+dcube = rotate(rotate(cube,"F"),"B'");
+drawCube(dcube,label="B'F")
+u3cube = rotate(rotate(cube,"B'"),"F");
+drawCube(u3cube,label="FB'")
+```
+
+
+
+
+```{r}
+transform <-function(vec,vals) {
+  return(vec[vals+1]);
+} 
+
+rot2ctrans <- function(rot) {
+  arr = 0:7;
+  for (tp in rot) {
+    indices = tp+1;
+    for (ii in 1:length(indices)) {
+      arr[indices[ii]] = tp[ii %% length(indices) + 1]; 
+    }
+  }
+  arr;
+}
+
+ctransforms = list(
+  list(name = "U", rot=list(c(3,1,0,2))),
+  list(name = "D", rot=list(c(6,4,5,7))),
+  list(name = "F", rot=list(c(1,5,4,0))),
+  list(name = "B", rot=list(c(2,6,7,3))),
+  list(name = "R", rot=list(c(0,4,6,2))),
+  list(name = "L", rot=list(c(3,7,5,1)))
+)
+
+ctble = data.frame();
+for (trs in ctransforms) {
+  tr=rot2ctrans(trs$rot);rots = lapply(1:nrow(ctble), function(x) unlist(ctble[x,]));
+  names(rots) = row.names(ctble);
+  tr2=transform(tr,tr);
+  trprime= transform(tr,transform(tr,transform(0:7,tr)));
+  subtab=rbind(tr,trprime,tr2);
+  row.names(subtab) = paste0(trs$name,c("","'","2"));
+  ctble=rbind(ctble, subtab);
+}
+ctble
+
+crotate<-function(corners,cmd) {
+  trans=unlist(ctble[cmd,])+1
+  corners[trans];
+}
+
+cube2corners <- function(cube) {
+  valdic=list("u"=0,"d"=4,"f"=0,"b"=2,"r"=0,"l"=1);
+  combineVal <- function(x,y,z) {
+    valdic[[cube[x+1]]]+valdic[[cube[y+1]]]+valdic[[cube[z+1]]];
+  }
+  ufr=combineVal(3,4,9);
+  ufl=combineVal(2,8,17);
+  ubr=combineVal(1,5,20);
+  ubl=combineVal(0,16,21);
+  dfr=combineVal(6,11,13);
+  dfl=combineVal(10,12,19);
+  dbr=combineVal(7,15,22);
+  dbl=combineVal(14,18,23);
+  return(c(ufr,ufl,ubr,ubl,dfr,dfl,dbr,dbl));
+}
+```
+
+```{r}
+ctble = data.frame();
+for (trs in ctransforms) {
+  tr=rot2ctrans(trs$rot);rots = lapply(1:nrow(tble), function(x) unlist(ctble[x,]));
+  names(rots) = row.names(ctble);
+  tr2=transform(tr,tr);
+  trprime= transform(tr,transform(tr,transform(0:7,tr)));
+  subtab=rbind(tr,trprime,tr2);
+  row.names(subtab) = paste0(trs$name,c("","'","2"));
+  ctble=rbind(ctble, subtab);
+}
+
+ss = "new int [][]{";
+for (ii in 1:nrow(ctble)) {
+  ss=paste0(ss,ifelse(ii==1,"",",")," new int[]  {",paste(ctble[ii,],collapse=","),"} //",row.names(ctble)[ii],"\n");
+}
+ss = paste0(ss,"}")
+writeLines(ss);
+```
+
+
+
+```{r}
+corners=c(UFR=0,UFL=1,UBR=2,UBL=3, DFR=4, DFL=5, DBR=6,DBL=7)
+crot <- function(corner, rot) {
+  if (rot=="I") { return(corner); }
+  idx=which(names(corners)==corner)
+  names(corners)[ctble[rot,idx]+1];
+}
+```
+
+
+```{r}
+cornernames = names(corners);
+trans = row.names(ctble);
+solutionset = list()
+for (co in cornernames) {
+  solutionset[[co]] = list(list(op="I", elem=co));
+}
+
+optable = array("", dim=c(8,8));
+row.names(optable) = cornernames;
+colnames(optable) = cornernames;
+
+for (rw in cornernames) {
+  for (tr in trans) {
+    cl = crot(rw, tr);
+    #print(paste0(tr,"[",rw,"]=",cl,"\n"))
+    #optable[rw,cl]=ifelse(optable[rw,cl]=="", tr, paste0(optable[rw,cl], ",", tr));
+    if (optable[rw,cl]=="") {
+      optable[rw,cl] = tr;
+    }
+  }
+  optable[rw,rw] = "I";
+}
+optable["UFR","DBL"] = "R2,D'";
+optable["UFL","DBR"] = "F,D2";
+optable["UBR","DFL"] = "R2,D";
+optable["UBL","DFR"] = "U',R2";
+optable["DFR","UBL"] = "R2,U";
+optable["DFL","UBR"] = "F',U2";
+optable["DBR","UFL"] = "R2,U'";
+optable["DBL","UFR"] = "L2,U";
+optable;
+```
+
+```{r}
+
+run_op<-function(input, ops) {
+  opsarray = strsplit(ops,",")[[1]];
+  out = input;
+  for (op in opsarray) {
+    out=crot(out, op)  
+  }
+  return(out);
+}
+
+run_op("DBL","L2,U")  # UFR
+```
+
+```{r}
+result=c();
+for (e1 in names(corners)) {
+  for (e2 in names(corners)) {
+     out = run_op(e1,optable[e1,e2]);
+     result = append(result, out == e2);
+  }
+}
+all(result);
+```
+
+```{r}
+nodes = list(
+  UFR=c(3,4,9),
+  UFL=c(2,8,17),
+  UBR=c(1,5,20),
+  UBL=c(0,16,21),
+  DFR=c(6,11,13),
+  DFL=c(10,12,19),
+  DBR=c(7,15,22),
+  DBL=c(14,18,23)
+);
+
+rot <- function(face, cmd) {
+  if (cmd=="I") return(face);
+  trans=as.vector(unlist(tble[cmd,]));
+  trans[face+1];  
+}
+
+face_op<-function(face, ops) {
+  opsarray = strsplit(ops,",")[[1]];
+  out=list();
+  for (f in face) {
+    out[[as.character(f)]] = f;
+    for (op in opsarray) {
+      out[[as.character(f)]]=rot(out[[as.character(f)]], op)  
+    }
+  }
+  return(out);
+}
+
+corner2faces<-function(cornerplace,cornername) {
+  trf = optable[cornername,cornerplace];
+  face_op(nodes[[cornername]],trf);
+}
+```
+
+
+```{r}
+#  4   3   2   1   1   3   5   7   2   1   6   5   6   5   8   7   4   2   8   6   3   4   7   8 
+# "u" "r" "u" "u" "r" "d" "r" "b" "f" "f" "f" "f" "d" "d" "l" "d" "b" "l" "u" "l" "b" "r" "l" "b" 
+# "R" "r" "u" "u" "r" "d" "r" "d" "f" "f" "f" "f" "d" "d" "l" "l" "U" "l" "u" "l" "b" "B" "b" "b"
+#
+corners2cube <- function(cors) {
+ # browser();
+  cnames = sapply(cors, function(x) cornernames[x+1]);
+  placenames = cornernames;
+  refcube = strsplit("uuuurrrrffffddddllllbbbb","")[[1]];
+  newcube = rep("",24);
+  for (ii in seq_along(placenames)) {
+    out=corner2faces(placenames[ii], cnames[ii]);
+    #newcube[as.numeric(names(out))+1] = refcube[unlist(out)+1];
+    newcube[unlist(out)+1] = refcube[as.numeric(names(out))+1]
+    names(newcube)[unlist(out)+1] = ii;
+  }
+  newcube;
+}
+```
+
+```{r}
+cr = cube2corners(cube);
+matching = sapply(trans, function(x) {
+  ncube = rotate(cube,"B")
+  ncr1= crotate(cr,"B")
+  ncr2= cube2corners(ncube);
+  all(ncr1==ncr2);
+})
+matching
+```
+
+CRotate and Rotate work as intended.
+
+```{r}
+multirot<-function(cube, ops) {
+  opsarray = strsplit(ops," ")[[1]];
+  for (ops in opsarray) {
+      if (ops != "") {
+        cube = rotate(cube, ops);  
+      }
+  };
+  cube;
+}
+```
+
+```{r}
+icube = strsplit(tolower("DDLLULBBFFULRURURDFFBBRD"),"")[[1]];
+ncube1=multirot(icube,"R,F',D2");
+ncube2=multirot(icube,"D,F',B2");
+drawCube(ncube1)
+drawCube(ncube2)
+```
+
+
+```{r}
+#icube = strsplit(tolower("DDLLULBBFFULRURURDFFBBRD"),"")[[1]];
+#icube = strsplit(tolower("DDLLULBBFFULRURURDFFBBRD"),"")[[1]];
+icube = strsplit("uuuurrrrffffddddllllbbbb","")[[1]];
+drawCube(icube);
+ncube= rotate(icube,"F");
+drawCube(ncube,label="F");
+ncube1= rotate(ncube,"B2");
+drawCube(ncube1,label="B2");
+ncube2= rotate(ncube1,"D'");
+drawCube(ncube2,label="D'");
+ncube3= rotate(ncube2,"F2");
+drawCube(ncube3,label="F2");
+ncube4= rotate(ncube3,"R");
+drawCube(ncube4,label="R");
+```
+cube=UULLURURFFFFRRDDLDLDBBBB
+cube corners0=UFL DFL UBR UBL UFR DFR DBR DBL
+cube1=DDLLULULFFFFRRUURDRDBBBB
+cube corners1=UFL DFL DBL DBR UFR DFR UBL UBR
+cube2=DDLLULBBFFULRURURDFFBBRD
+cube corners2=UFL DFL DBL DBR UBL UFR UBR DFR
+cube3=DDURFLDBLUFFLLRURBFUBBRD
+cube corners3=UFR UBL DBL DBR DFL UFL UBR DFR
+shuffled cube=RUFDRBRULBDFLDBRFUDFLUBL
+shuffled cube corners=DBR UFL UBL UFR DFR DFL UBR DBL
+Solution using corners
+Solution using faces
+0:RUFDRBRULBDFLDBRFUDFLUBL
+Problem solved!
+62906:RRBFLURRUUFFDDDDULLLFBBB
+<---B---
+6827:LUBFLRRRUUFFDDRUDLDLBBFB
+<---Lprime---
+619:BUBFLRRRLUBFUDFUDDLLBRFD
+<---B---
+45:LDBFLBRULUBFUDRRFDULRDBF
+<---L2---
+2:UDRFLBRUFUDFLDBRLUDFRBBL
+<---Uprime---
+0:RUFDRBRULBDFLDBRFUDFLUBL
+Total Trial=122902 numRejected=59996
+
+
+```{r}
+icube = strsplit(tolower("RUFDRBRULBDFLDBRFUDFLUBL"),"")[[1]];
+drawCube(icube);
+
+rcube1= multirot(icube, "U' L2 B L' B")
+drawCube(rcube1);
+
+#rcube2= multirot(icube, "L U2 R' B2 U F")
+#drawCube(rcube2);
+```
+
+
+shuffled cube=RUFDRBRULBDFLDBRFUDFLUBL
+shuffled cube corners=DBR UFL UBL UFR DFR DFL UBR DBL
+Solution using corners
+0:DBR UFL UBL UFR DFR DFL UBR DBL
+Problem solved!
+3913:UFR UFL UBR UBL DFR DFL DBR DBL
+<---L2---
+380:DBR UFL DFR UBL UBR DFL UFR DBL
+<---Uprime---
+28:DFR DBR UBL UFL UBR DFL UFR DBL
+<---L---
+1:UBL DBR UFR UFL DFR DFL UBR DBL
+<---U---
+0:DBR UFL UBL UFR DFR DFL UBR DBL
+Total Trial=6855 numRejected=2942
+
+
+
+
+```{r}
+case1=list(c(21,2,9,5),c(17,3,5,21),c(9,1,21,17),c(5,0,17,9));
+case2=list(c(1,16,8,4),c(0,8,4,20),c(2,4,20,16),c(3,20,16,8));
+case3=list(c(8,9,20,21),c(5,4,16,17));
+case4=list(c(1,3,16,17),c(0,2,5,4),c(0,1,8,9),c(2,3,20,21));
+case5=list(c(16,17,20,9),c(5,4,21,8),c(8,9,16,5),c(21,20,17,4));
+case6=list(c(0,2,20,9),c(0,1,17,4),c(1,3,21,8),c(3,2,5,16));
+case7=list(c(0,3,17),c(1,2,21),c(0,3,5),c(1,2,9));
+
+Step2Cases=list(case1,case2,case3,case4,case5,case6,case7);
+command1="R U R' U R U2 R'";
+command2="R U2 R' U' R U' R'";
+command3="R U R' U R U' R' U R U2 R'";
+command4="F R U R' U' F'"
+command5="R U2 R2 U' R2 U' R2 U2 R"
+command6="L' U' L U R U' R' F";
+command7="L' U' L' U R U' L U R' L";
+Step2Commands=c(command1,command2,command3,command4,command5,command6,command7);
+
+PreRotation=list(
+ c("","U","U2","U'"),
+c("","U","U2","U'"),
+c("U","U2"),
+c("","U2","U","U'"),
+c("","U2","U","U'"),
+c("","U'","U2","U"),
+c("","U'","U2","U"));
+
+RotateCube<-function(cube, rot="") {
+  if (rot=="") return(cube);
+  counterrots=c("R"="L","U"="D","L"="R","D"="U","F"="B","B"="F")
+  counterrot = counterrots[substring(rot,1,1)];
+  if (endsWith(rot,"2")) {
+    counterrot = paste0(counterrot,"2");
+  } else if (!endsWith(rot,"'")) {
+    counterrot = paste0(counterrot,"'");
+  }
+  newcube = rotate(cube, rot);
+  newcube = rotate(newcube, counterrot);
+  newcube;
+}
+
+
+```
+
+```{r}
+scube = cube;
+drawCube(scube);
+drawCube(RotateCube(scube,"U"),label="U")
+drawCube(RotateCube(scube,"U2"),label="U2");
+drawCube(RotateCube(scube,"U'"),label="U'");
+drawCube(RotateCube(scube,"D"),label="D")
+drawCube(RotateCube(scube,"D2"),label="D2");
+drawCube(RotateCube(scube,"D'"),label="D'");
+drawCube(RotateCube(scube,"R"),label="R")
+drawCube(RotateCube(scube,"R2"),label="R2");
+drawCube(RotateCube(scube,"R'"),label="R'");
+
+```
+
+#Step 2 - Orientating the Last Layer
+
+In step 2 we are going to use a set algorithm to correctly orientate our last layer.  
+
+1. Place your 2x2 Cube on a table with the blue side facing down and hidden.
+2. The unsolved layer which is now on the top will become the green side, eventually.
+3. Keeping the blue side on the bottom at all times count how many green stickers are on the top layer and try to match your cube to one of the cases in the image below.
+
+https://cdn.shopify.com/s/files/1/0855/0152/t/32/assets/2x2-beginners-method-algs--1-1644916321179.jpg?v=1644916343
+
+case I. R U R' U R U2 R'
+case II. R U2 R' U' R U' R'
+case III. R U R' U R U' R' U R U2 R'
+case IV. F R U R' U' F'
+case V. R U2 R2 U' R2 U' R2 U2 R
+case VI. L' U' L U R U' R' F
+case VII. L' U' L' U R U' L U
+
+4. Once you have decided which case you have using the case images below (1-7) hold your Rubik's Cube in the same orientation and perform the algorithm shown below the case. Please Note: Make sure to always have your blue side on the bottom. The green lines in the case images below show which way the other green stickers are pointing.
+5. You will only have to perform one of the algorithms to bring all of your green stickers to the top layer.
+6. Once your top layer is all green and your blue layer on the bottom is still intact you may move on to step 3. You're almost there!
+
+```{r}
+findMatchingStep2 <- function(cube) {
+  casei = -1;
+  matchj = 0;
+  found=F;
+  
+  for (casenum in 1:7) {
+    cases=Step2Cases[[casenum]];
+    for (jj in seq_along(cases)) {
+       if (all(cube[cases[[jj]]+1] == "u")) {
+          found = T;
+          matchj= jj;
+          casei = casenum;
+          return(list(casenum=casei, matchj=jj))
+       }
+    }
+  }
+  return(list(casenum=NA, matchj=0));
+}
+
+cmatch = findMatchingStep2(icube);
+step2command = Step2Commands[cmatch$casenum];
+cmatch
+```
+
+
+```{r}
+#https://www.youtube.com/watch?v=UYCeyu_pbTI&t=1245s
+
+icube = strsplit(tolower("ULBRFURRRUFFDDDDFULLBLBB"),"")[[1]];  #type1 -> ok
+icube = strsplit(tolower("ULBRUFRRUBFFDDDDRLLLUFBB"),"")[[1]];  #type2 ->ok
+icube = strsplit(tolower("RBRFLLRRUUFFDDDDFBLLUUBB"),"")[[1]];  #type3 -> ok    
+icube = strsplit(tolower("BLUULFRRRBFFDDDDRFLLUUBB"),"")[[1]];  #type4  -> ok  
+icube = strsplit(tolower("UUFRUBRRLBFFDDDDRULLLFBB"),"")[[1]];  #typeS  -> ok
+
+icube = strsplit(tolower("LFRFUURRURFFDDDDBBLLLUBB"),"")[[1]];  #type5 -> ok
+icube = strsplit(tolower("FURURBRRUFFFDDDDLBLLLUBB"),"")[[1]];  #type6 -> ok
+icube = strsplit(tolower("UFBULRRRRBFFDDDDFULLULBB"),"")[[1]];  #type7 ->ok
+icube1=icube
+#icube1= RotateCube(icube,"U2")   # matchj= 1 "U"
+cmatch = findMatchingStep2(icube1);
+solution = "";
+if (!is.na(cmatch$casenum)) {
+  step2command = paste(PreRotation[[cmatch$casenum]][cmatch$matchj], Step2Commands[cmatch$casenum]);
+  scube=multirot(icube1, step2command);
+  solution = paste(solution, step2command);
+} else {
+  scube=icube1
+}
+drawCubeUpDown(icube1);
+
+fixSecondLayer <- function(cube) {
+  rot = "";
+  if (cube[11]=="l") {
+    rot = "D'";
+  } else if (cube[11]=="b") {
+    rot = "D2";
+  } else if (cube[11]=="r") {
+    rot = "D"
+  }
+  if (rot != "") {
+    solution <<- paste(solution, rot);
+    cube=rotate(cube, rot);  
+  }
+  cube;
+}
+
+scube = fixSecondLayer(scube);
+drawCubeUpDown(scube, label=sprintf("Type %d(%d)",cmatch$casenum, cmatch$matchj));
+```
+
+# Step 3 - Permuting the Last Layer
+
+In step 3 we are going to permute all of the correctly orientated corners of the last layer. Hopefully at the end of this step you will have solved your 2x2 Rubik's Cube using the beginners method.
+
+There are a few different ways to solve this last layer but as this is the beginners method we will stick to just 1 method and then we can progress on to other ways in a later tutorial.
+
+1. First look for 2 corners that are correctly permuted in relation to each other (meaning 2 solved pieces next to each other). Like the image below.
+2. Place your cube white side down on the table and the yellow side facing up.
+3. Rotate the whole of your puzzle until the 2 solved corners are at the back of the cube.
+Remember: If you do not have 2 solved pieces next to each other (like the image above with the 2 white pieces) just perform the following algorithm from any angle and repeat from step 1.
+4. With the 2 solved pieces at the back perform the algorithm: L' U R' D2 R U' R' D2 R2
+
+
+```{r}
+makeTwoIdenticalFacesFaceBack <- function(cube) {
+  rot = "";
+  if (cube[16+1]==cube[17+1]) {   # left
+    rot = "U";
+  } else if (cube[4+1]==cube[5+1]) { #right
+    rot = "U'";
+  } else if (cube[8+1]==cube[9+1]) {
+    rot = "U2";
+  }
+  if (rot != "") {
+    solution <<- paste(solution, rot)
+    cube=rotate(cube, rot);  
+  }
+  list(cube=cube, success=ifelse(rot=="",FALSE, TRUE));
+}
+
+countFacesInSameColorInFirstLayer<-function(cube) {
+  (cube[20+1]==cube[21+1])+(cube[16+1]==cube[17+1])+(cube[8+1]==cube[9+1])+(cube[5+1]==cube[4+1]);
+}
+
+if (countFacesInSameColorInFirstLayer(scube)<4) {
+  result = list(cube=scube, success=FALSE);
+  while (!result$success) {
+    result = makeTwoIdenticalFacesFaceBack(scube);
+    scube=result$cube;
+    print(paste0("makeTwoIdenticalFaceBack+",result$success));
+    step3command = "L' U R' D2 R U' R' D2 R2 B R' L";
+    solution = paste(solution, step3command);
+    scube=multirot(scube, step3command)
+    result = makeTwoIdenticalFacesFaceBack(scube);
+    print(paste0("makeTwoIdenticalFaceBack+",result$success));
+    scube=result$cube;
+  } 
+}
+
+
+drawCube(scube);
+```
+
+```{r}
+#icube=scube;
+#drawCube(icube);
+#icube2 = multirot(icube,prerot);
+#icube2 = RotateCube(icube,"U2");
+drawCube(scube);
+
+fixFirstLayer <- function(cube) {
+  rot = "";
+  if (cube[9]=="l") {
+    rot = "U";
+  } else if (cube[9]=="b") {
+    rot = "U2";
+  } else if (cube[9]=="r") {
+    rot = "U'"
+  }
+  if (rot != "") {
+    solution <<- paste(solution, rot);
+    cube=rotate(cube, rot);  
+  }
+  cube;
+}
+scube=fixFirstLayer(scube);
+drawCube(scube);
+print(solution);
+
+
+scube2=multirot(icube, solution);
+#scube2=fixFirstLayer(scube2);
+drawCube(scube2);
+```
+
+```{r}
+drawCube(icube1);
+solved = multirot(icube1, commands);
+drawCube(solved);
+```
+
+
+```{r}
+solveCube<-function(icube) {
+  case1=list(c(21,2,9,5),c(17,3,5,21),c(9,1,21,17),c(5,0,17,9));
+  case2=list(c(1,16,8,4),c(0,8,4,20),c(2,4,20,16),c(3,20,16,8));
+  case3=list(c(8,9,20,21),c(5,4,16,17));
+  case4=list(c(1,3,16,17),c(0,2,5,4),c(0,1,8,9),c(2,3,20,21));
+  case5=list(c(16,17,20,9),c(5,4,21,8),c(8,9,16,5),c(21,20,17,4));
+  case6=list(c(0,2,20,9),c(0,1,17,4),c(1,3,21,8),c(3,2,5,16));
+  case7=list(c(0,3,17),c(1,2,21),c(0,3,5),c(1,2,9));
+  
+  Step2Cases=list(case1,case2,case3,case4,case5,case6,case7);
+  command1="R U R' U R U2 R'";
+  command2="R U2 R' U' R U' R'";
+  command3="R U R' U R U' R' U R U2 R'";
+  command4="F R U R' U' F'"
+  command5="R U2 R2 U' R2 U' R2 U2 R"
+  command6="L' U' L U R U' R' F";
+  command7="L' U' L' U R U' L U R' L";
+  Step2Commands=c(command1,command2,command3,command4,command5,command6,command7);
+  
+  PreRotation=list(
+   c("","U","U2","U'"),
+  c("","U","U2","U'"),
+  c("U","U2"),
+  c("","U2","U","U'"),
+  c("","U2","U","U'"),
+  c("","U'","U2","U"),
+  c("","U'","U2","U"));
+  
+  destcube = strsplit("uuuurrrrffffddddllllbbbb","")[[1]];
+  
+  fixSecondLayer <- function(cube) {
+    rot = "";
+    if (cube[11]=="l") {
+      rot = "D'";
+    } else if (cube[11]=="b") {
+      rot = "D2";
+    } else if (cube[11]=="r") {
+      rot = "D"
+    }
+    if (rot != "") {
+      solution <<- paste(solution, rot);
+      cube=rotate(cube, rot);  
+    }
+    cube;
+  }
+  
+  fixFirstLayer <- function(cube) {
+    rot = "";
+    if (cube[9]=="l") {
+      rot = "U";
+    } else if (cube[9]=="b") {
+      rot = "U2";
+    } else if (cube[9]=="r") {
+      rot = "U'"
+    }
+    if (rot != "") {
+      solution <<- paste(solution, rot);
+      cube=rotate(cube, rot);  
+    }
+    cube;
+  }
+  
+  makeTwoIdenticalFacesFaceBack <- function(cube) {
+    rot = "";
+    if (cube[16+1]==cube[17+1]) {   # left
+      rot = "U";
+    } else if (cube[4+1]==cube[5+1]) { #right
+      rot = "U'";
+    } else if (cube[8+1]==cube[9+1]) {
+      rot = "U2";
+    }
+    if (rot != "") {
+      commands <<- paste(commands, rot)
+      cube=rotate(cube, rot);  
+    }
+    list(cube=cube, success=ifelse(rot=="",FALSE, TRUE));
+  }
+
+  
+  findMatchingStep2 <- function(cube) {
+    casei = -1;
+    matchj = 0;
+    found=F;
+    
+    for (casenum in 1:7) {
+      cases=Step2Cases[[casenum]];
+      for (jj in seq_along(cases)) {
+         if (all(cube[cases[[jj]]+1] == "u")) {
+            found = T;
+            matchj= jj;
+            casei = casenum;
+            return(list(casenum=casei, matchj=jj))
+         }
+      }
+    }
+    return(list(casenum=NA, matchj=0));
+  }
+
+  
+  
+  cmatch = findMatchingStep2(icube);
+  solution = "";
+  if (!is.na(cmatch$casenum)) {
+    step2command = paste(PreRotation[[cmatch$casenum]][cmatch$matchj], Step2Commands[cmatch$casenum]);
+    scube=multirot(icube, step2command);
+    solution = paste(solution, step2command);
+  } else {
+    scube=icube
+  }
+  
+  scube = fixSecondLayer(scube);
+  step3command = "L' U R' D2 R U' R' D2 R2 B R' L";
+  result = makeTwoIdenticalFacesFaceBack(scube);
+  scube = result$cube;
+  while (!result$success) {
+    print(paste0("makeTwoIdenticalFaceBack+",result$success));
+    solution = paste(solution, step3command);
+    scube=multirot(scube, step3command);
+    result = makeTwoIdenticalFacesFaceBack(scube);
+    scube = result$cube;
+  } 
+  print(paste0("makeTwoIdenticalFaceBack+",result$success));
+  solution = paste(solution, step3command);
+  scube=multirot(scube, step3command);
+  
+  scube=fixFirstLayer(scube);
+  if (!all(scube == destcube)) {
+    #browser();
+    stop("Finding solution is failed.")
+  }
+  trimws(solution);
+}
+
+```
+
+
+```{r}
+cube1 = strsplit(tolower("ULBRFURRRUFFDDDDFULLBLBB"),"")[[1]];  #type1
+cube2 = strsplit(tolower("ULBRUFRRUBFFDDDDRLLLUFBB"),"")[[1]];  #type2
+cube3 = strsplit(tolower("RBRFLLRRUUFFDDDDFBLLUUBB"),"")[[1]];  #type3
+cube4 = strsplit(tolower("BLUULFRRRBFFDDDDRFLLUUBB"),"")[[1]];  #type4
+cube5 = strsplit(tolower("LFRFUURRURFFDDDDBBLLLUBB"),"")[[1]];  #type5
+cube6= strsplit(tolower("FURURBRRUFFFDDDDLBLLLUBB"),"")[[1]];  #type6
+cube7 = strsplit(tolower("UFBULRRRRBFFDDDDFULLULBB"),"")[[1]];  #type7
+cubeS = strsplit(tolower("UUFRUBRRLBFFDDDDRULLLFBB"),"")[[1]];  #type7
+
+
+icube=cubeS
+drawCube(icube);
+sol=solveCube(icube);
+solved=multirot(icube, sol);
+drawCube(solved);
+
+```
+
+
+```{r}
+drawCubeUpDown(cube,label="4-7");
+```

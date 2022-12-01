@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp1.1</TargetFramework>
+    <RootNamespace>TwoByTwoPuzzleSolver</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Kociemba\**" />
+    <EmbeddedResource Remove="Kociemba\**" />
+    <None Remove="Kociemba\**" />
+  </ItemGroup>
+
+</Project>

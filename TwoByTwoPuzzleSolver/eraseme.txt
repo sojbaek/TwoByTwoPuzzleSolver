@@ -1,0 +1,75 @@
+﻿static CubeCorner RotateCubeForCorner(CubeCorner cubecorner, Rotate rot)
+        {
+            Corner[] outCorner = new Corner[8];
+            int[] tr = ctransform[(int)rot];
+            for (int ii = 0; ii < 8; ii++)
+            {
+                outCorner[ii] = cubecorner.f[tr[ii]];
+            }
+            return new CubeCorner(outCorner);
+        }
+
+        public static void BFS_Corners(CubeCorner start, CubeCorner end)
+        {
+            List<CubeCorner> corners = new List<CubeCorner>();
+            List<int> parentArray = new List<int>();
+            List<Rotate> rotHistory = new List<Rotate>();
+            HashSet<CubeCorner> visited = new HashSet<CubeCorner>();
+            // Create a queue for BFS
+            int queueindex;
+            // Stack<Rotate> rotstack = new Stack<Rotate>();
+
+            Rotate[] rots = new Rotate[] {
+                Rotate.U, Rotate.Uprime,Rotate.U2, Rotate.R, Rotate.Rprime, Rotate.R2,
+                Rotate.F, Rotate.Fprime,Rotate.F2, Rotate.D, Rotate.Dprime, Rotate.D2,
+                Rotate.L, Rotate.Lprime,Rotate.L2, Rotate.B, Rotate.Bprime, Rotate.B2
+            };
+
+            corners.Add(start);
+            parentArray.Add(0);
+            rotHistory.Add(Rotate.U);  // 0
+            visited.Add(start);
+            queueindex = 0;
+            int numRejected = 0;
+            int total = 0;
+            Console.WriteLine(queueindex + ":" + corners[queueindex].to_fc_String());
+            while (queueindex < corners.Count)
+            {
+                CubeCorner s = corners[queueindex];
+                //Console.WriteLine(s);
+                foreach (Rotate rot in rots)
+                {
+                    CubeCorner newCorner = RotateCubeForCorner(s, rot);
+                    total++;
+                    if (!visited.Contains(newCorner))
+                    {
+                        corners.Add(newCorner);
+                        parentArray.Add(queueindex);
+                        rotHistory.Add(rot);
+                        visited.Add(newCorner);
+                        //     Console.Write(queueindex +":" + facecubes[queueindex].to_fc_String());
+                        //     Console.WriteLine("----" + rot.ToString() + "-->" + (facecubes.Count-1) + newCube.to_fc_String() );
+                    }
+                    else
+                    {
+                        numRejected++;
+                    }
+                    if (newCorner.Equals(end))
+                    {
+                        Console.WriteLine("Problem solved!");
+                        int parent = corners.Count - 1;
+                        while (parent > 0)
+                        {
+                            Console.WriteLine(parent + ":" + corners[parent].to_fc_String());
+                            Console.WriteLine("<---" + rotHistory[parent].ToString() + "---");
+                            parent = parentArray[parent];
+                        }
+                        Console.WriteLine(parent + ":" + corners[parent].to_fc_String());
+                        Console.WriteLine("Total Trial=" + total + " numRejected=" + numRejected);
+                        return;
+                    }
+                }
+                queueindex++;
+            }
+            Console.WriteLine("Something wrong");
+        }
